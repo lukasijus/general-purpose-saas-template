@@ -1,0 +1,22 @@
+{
+  "name": "general-purpose-saas-template",
+  "version": "0.1.0",
+  "private": true,
+  "description": "General-purpose SaaS application template.",
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "dev": "bash scripts/dev.sh",
+    "dev:api": "bash -lc 'cd apps/server && uv run python -m uvicorn app.main:app --reload --host 0.0.0.0 --port ${API_PORT:-8000}'",
+    "build": "pnpm --filter @general-purpose-saas-template/web build && pnpm --filter @general-purpose-saas-template/landing build",
+    "lint": "pnpm --filter @general-purpose-saas-template/web lint && pnpm --filter @general-purpose-saas-template/landing lint",
+    "test": "pnpm test:gui && pnpm test:landing && pnpm test:api",
+    "test:gui": "pnpm --filter @general-purpose-saas-template/web test",
+    "test:landing": "pnpm --filter @general-purpose-saas-template/landing test",
+    "test:api": "bash -lc 'cd apps/server && uv run --extra dev python -m pytest'",
+    "e2e": "pnpm --filter @general-purpose-saas-template/web e2e",
+    "format": "pnpm --filter @general-purpose-saas-template/web format && pnpm --filter @general-purpose-saas-template/landing format && bash -lc 'cd apps/server && uv run black app tests'"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

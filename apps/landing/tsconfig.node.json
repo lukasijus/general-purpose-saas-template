@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "../../node_modules/.cache/tsbuild/apps-landing-node",
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuild/apps-landing-node.tsbuildinfo",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true
+  },
+  "include": ["vite.config.ts"]
+}

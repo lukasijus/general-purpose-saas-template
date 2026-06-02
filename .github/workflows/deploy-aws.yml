@@ -1,0 +1,95 @@
+name: Deploy static apps to AWS
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: aws-static-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  LANDING_S3_BUCKET: ${{ vars.LANDING_S3_BUCKET }}
+  LANDING_CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.LANDING_CLOUDFRONT_DISTRIBUTION_ID }}
+  DASHBOARD_S3_BUCKET: ${{ vars.DASHBOARD_S3_BUCKET }}
+  DASHBOARD_CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.DASHBOARD_CLOUDFRONT_DISTRIBUTION_ID }}
+  VITE_DASHBOARD_URL: ${{ vars.VITE_DASHBOARD_URL }}
+  VITE_REGISTER_URL: ${{ vars.VITE_REGISTER_URL }}
+  VITE_STRIPE_BASIC_URL: ${{ vars.VITE_STRIPE_BASIC_URL }}
+  VITE_STRIPE_PRO_URL: ${{ vars.VITE_STRIPE_PRO_URL }}
+  VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate deployment settings
+        run: |
+          test -n "${AWS_REGION}" || (echo "Missing repository variable AWS_REGION" && exit 1)
+          test -n "${LANDING_S3_BUCKET}" || (echo "Missing repository variable LANDING_S3_BUCKET" && exit 1)
+          test -n "${DASHBOARD_S3_BUCKET}" || (echo "Missing repository variable DASHBOARD_S3_BUCKET" && exit 1)
+          test -n "${{ secrets.AWS_ROLE_TO_ASSUME }}" || (echo "Missing repository secret AWS_ROLE_TO_ASSUME" && exit 1)
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test frontend apps
+        run: pnpm test:web && pnpm test:landing
+
+      - name: Build frontend apps
+        run: pnpm build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5.0.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - name: Deploy landing
+        run: |
+          aws s3 sync apps/landing/dist "s3://${LANDING_S3_BUCKET}" --delete
+
+      - name: Deploy dashboard
+        run: |
+          aws s3 sync apps/web/dist "s3://${DASHBOARD_S3_BUCKET}" --delete
+
+      - name: Invalidate landing CDN
+        if: ${{ env.LANDING_CLOUDFRONT_DISTRIBUTION_ID != '' }}
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${LANDING_CLOUDFRONT_DISTRIBUTION_ID}" \
+            --paths "/*"
+
+      - name: Invalidate dashboard CDN
+        if: ${{ env.DASHBOARD_CLOUDFRONT_DISTRIBUTION_ID != '' }}
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${DASHBOARD_CLOUDFRONT_DISTRIBUTION_ID}" \
+            --paths "/*"

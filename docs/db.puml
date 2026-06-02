@@ -1,0 +1,85 @@
+@startuml
+title
+	<size:20><b>Database ERD</b></size>
+end title
+
+hide circle
+left to right direction
+
+skinparam linetype ortho
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam nodesep 530
+skinparam ranksep 300
+skinparam defaultFontName Inter
+skinparam defaultTextAlignment left
+skinparam classAttributeIconSize 0
+
+skinparam class {
+  BackgroundColor #F8FAFC
+  BorderColor #334155
+  ArrowColor #475569
+  FontColor #0F172A
+  HeaderBackgroundColor #DBEAFE
+  HeaderFontColor #0F172A
+  StereotypeFontColor #475569
+  FontSize 13
+  HeaderFontSize 15
+  HeaderFontStyle bold
+}
+
+skinparam Arrow {
+  Color #475569
+  FontColor #334155
+  FontSize 12
+  FontStyle bold
+  Thickness 1.3
+}
+
+'Create entity of users table (email unique, password hash):  
+entity "<b>users</b>" as users <<identity>> {
+  <b>uuid</b> : uuid <<PK>>
+  --
+  email : varchar <<UNIQUE>>
+  password_hash : varchar <<NULL>>
+  role: varchar NOT NULL DEFAULT <<user>>
+  --
+  is_active : boolean
+  is_verified : boolean
+  --
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+' Create entity of oauth_accounts table unique(provider, provider_user_id): 
+entity "<b>oauth_accounts</b>" as oauth_accounts <<identity_provider>> {
+  <b>uuid</b> : uuid <<PK>>
+  --
+  account_uuid : uuid <<FK users.uuid>>
+  provider : varchar
+  provider_user_id : varchar
+  --
+  created_at : timestamp
+  updated_at : timestamp
+  --
+  UNIQUE(account_uuid, provider)
+  UNIQUE(provider, provider_user_id)
+}
+
+'User_esttings
+entity "<b>user_settings</b>" as user_settings <<identity>> {
+  <b>user_uuid</b> : uuid <<PK/FK users.uuid>>
+  --
+  theme: varchar NOT NULL DEFAULT 'system'
+  language: varchar NOT NULL DEFAULT 'en'
+  --
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+'Relationships
+users ||--o{ oauth_accounts : oauth-providers
+users ||--|| user_settings : user_settings
+
+
+@enduml
